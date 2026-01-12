@@ -1,6 +1,5 @@
 using UnityEngine;
-
-public enum PlacementStage { StartPiece, EndPiece, Null }
+public enum PlacementStage { StartPiece, EndPiece, Null, BuildInProgress }
 public class BridgeConstructor : MonoBehaviour
 {
     #region Variables
@@ -20,19 +19,23 @@ public class BridgeConstructor : MonoBehaviour
 
     [Header("Rotation")]
     public float MouseRotateSensitivity = 180f; // degrees per second 
-    #endregion
 
+    private Transform _startPiece;
+    private Transform _endPiece;
+    #endregion
+    #region Unity Methods
     private void Update()
     {
         if (Physics.Raycast(transform.position, transform.forward, out var hit))
             lastHitPoint = hit.point;
 
-        UpdateCursor(); 
+        UpdateCursor();
 
         if (Input.GetMouseButtonDown(1))
             Place();
     }
-
+    #endregion
+    #region Cursor
     private void UpdateCursor()
     {
         //Create placement visual
@@ -65,10 +68,34 @@ public class BridgeConstructor : MonoBehaviour
             cursor.rotation = cachedRotation;
         }
     }
+    #endregion
+    #region Placing & Building
+
     void Place()
     {
-        //Place command (keep simple)
-        Debug.Log("Place command fired: " + CurrentPlacementStage);
-    }
+        if (cursor == null) return;
 
+        if (CurrentPlacementStage == PlacementStage.StartPiece)
+        {
+            if (_startPiece) Destroy(_startPiece.gameObject);
+            if (_endPiece) Destroy(_endPiece.gameObject);
+
+            _startPiece = Instantiate(Bridge_Start_Prefab, cursor.position, cursor.rotation).transform;
+            CurrentPlacementStage = PlacementStage.EndPiece;
+            return;
+        }
+
+        else if (CurrentPlacementStage == PlacementStage.EndPiece)
+        {
+            _endPiece = Instantiate(Bridge_End_Prefab, cursor.position, cursor.rotation).transform;
+            CurrentPlacementStage = PlacementStage.BuildInProgress;
+        }
+    }
+    void BuildBridge()
+    {
+        _startPiece = null;
+        _endPiece = null;
+        CurrentPlacementStage = PlacementStage.StartPiece;
+    }
+    #endregion
 }
