@@ -132,8 +132,9 @@ GameObject:
   - component: {fileID: 11927494}
   - component: {fileID: 11927497}
   - component: {fileID: 11927498}
+  - component: {fileID: 11927499}
   m_Layer: 0
-  m_Name: Camera
+  m_Name: Camera & Bridge Constructor
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -269,7 +270,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fdb6501fcfdbdbf4d9f722dd82525aef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
-  Sensitivity: 2
+  RotationSensitivity: 2
+  MovementSensitivity: 6
+--- !u!114 &11927499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 11927493}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 571346a55de37a243bb7234efe3c5b0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BridgeConstructor
+  CurrentPlacementStage: 0
+  Bridge_Start_Prefab: {fileID: 1341666223236204273, guid: fe9cc1c2d3c4dd648a4c7dce3158819f, type: 3}
+  Bridge_Mid_Prefab: {fileID: 8037916732216324198, guid: 208ebed345beab2468a2be62f9e18089, type: 3}
+  Bridge_Mid_Extensive_Prefab: {fileID: 4683062245175380615, guid: 61ec51203249a3a49891331fa25b2f7b, type: 3}
+  Bridge_End_Prefab: {fileID: 923143942410646467, guid: 2449b00b0b6e8b244a6b8925a37c080b, type: 3}
 --- !u!1 &897456294
 GameObject:
   m_ObjectHideFlags: 0
