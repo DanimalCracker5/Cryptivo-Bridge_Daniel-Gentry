@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-//Script is using legacy input system mainly due to time limitations
 public class CameraController : MonoBehaviour
 {
     #region Variables
@@ -12,16 +11,14 @@ public class CameraController : MonoBehaviour
 
     [Range(5f, 10f)]
     public float MovementSensitivity = 6f;
-    #endregion
-
+    #endregion 
     void Awake()
     {
         _camera = GetComponent<Camera>();
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-    }
-
+    } 
     private void Update()
     {
         UpdateRotation();
