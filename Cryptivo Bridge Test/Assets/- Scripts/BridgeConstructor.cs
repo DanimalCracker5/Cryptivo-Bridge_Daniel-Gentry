@@ -6,6 +6,7 @@ public class BridgeConstructor : MonoBehaviour
 {
     #region Variables
     private Vector3 lastHitPoint;
+
     private Transform cursor,
         _startPiece,
         _endPiece,
@@ -23,14 +24,13 @@ public class BridgeConstructor : MonoBehaviour
 
     [Header("Rotation")]
     public float MouseRotateSensitivity = 180f;
-
-    private const float BRIDGE_YAW_OFFSET = 90f;
-    private const float END_EXTRA_YAW = 180f;
-    #endregion
-
+    #endregion 
     #region Unity Methods
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Escape))
+            CancelBuild();
+
         if (Physics.Raycast(transform.position, transform.forward, out var hit))
             lastHitPoint = hit.point;
 
@@ -39,8 +39,7 @@ public class BridgeConstructor : MonoBehaviour
         if (Input.GetMouseButtonDown(1))
             Place();
     }
-    #endregion
-
+    #endregion 
     #region Cursor
     private void UpdateCursor()
     {
@@ -56,8 +55,12 @@ public class BridgeConstructor : MonoBehaviour
 
         if (CurrentPlacementStage == PlacementStage.EndPiece && _startPiece != null)
         {
+            Vector3 p = cursor.position;
+            p.y = _startPiece.position.y;
+            cursor.position = p;
+
             FaceEachOther(_startPiece, cursor);
-            VisualizeFillBetween(_startPiece, cursor);
+            PreviewFillBetween(_startPiece, cursor);
         }
         else
         {
@@ -66,8 +69,7 @@ public class BridgeConstructor : MonoBehaviour
             ClearMidPreview();
         }
     }
-
-    void SetCursorVisual(GameObject gameObject)
+    private void SetCursorVisual(GameObject prefab)
     {
         if (CurrentPlacementStage == _cachedPlacementStage) return;
 
@@ -76,14 +78,13 @@ public class BridgeConstructor : MonoBehaviour
         Quaternion cachedRotation = cursor ? cursor.rotation : Quaternion.identity;
 
         if (cursor) Destroy(cursor.gameObject);
-        cursor = Instantiate(gameObject).transform;
+        cursor = Instantiate(prefab).transform;
 
         cursor.rotation = cachedRotation;
     }
-    #endregion
-
+    #endregion 
     #region Placing & Building
-    void Place()
+    private void Place()
     {
         if (cursor == null) return;
 
@@ -100,16 +101,19 @@ public class BridgeConstructor : MonoBehaviour
 
         if (CurrentPlacementStage == PlacementStage.EndPiece)
         {
-            _endPiece = Instantiate(Bridge_End_Prefab, cursor.position, cursor.rotation).transform;
+            Vector3 endPos = cursor.position;
+            endPos.y = _startPiece.position.y;
+
+            _endPiece = Instantiate(Bridge_End_Prefab, endPos, cursor.rotation).transform;
 
             FaceEachOther(_startPiece, _endPiece);
-            FillBetween(_startPiece, _endPiece);
+            PlaceFillBetween(_startPiece, _endPiece);
 
             BuildBridge();
         }
     }
 
-    void BuildBridge()
+    private void BuildBridge()
     {
         ClearMidPreview();
         _startPiece = null;
@@ -117,58 +121,22 @@ public class BridgeConstructor : MonoBehaviour
         CurrentPlacementStage = PlacementStage.StartPiece;
     }
 
-    Quaternion LookBridge(Vector3 dir, float extraYaw = 0f)
+    private void CancelBuild()
     {
-        dir.y = 0f;
-        if (dir.sqrMagnitude < 0.0001f) return Quaternion.identity;
-        return Quaternion.LookRotation(dir, Vector3.up) * Quaternion.Euler(0f, BRIDGE_YAW_OFFSET + extraYaw, 0f);
+        ClearMidPreview();
+        if (_startPiece) Destroy(_startPiece.gameObject);
+        if (_endPiece) Destroy(_endPiece.gameObject);
+        _startPiece = null;
+        _endPiece = null;
+        CurrentPlacementStage = PlacementStage.StartPiece;
     }
-
-    void FaceEachOther(Transform a, Transform b)
+    #endregion
+    #region Filling
+    private void PlaceFillBetween(Transform start, Transform end)
     {
-        if (a == null || b == null) return;
-
-        Vector3 ab = b.position - a.position;
-
-        a.rotation = LookBridge(ab);
-        b.rotation = LookBridge(-ab, END_EXTRA_YAW);
+        FillBetweenInternal(start, end, null);
     }
-
-    float PieceLen(GameObject prefab)
-    {
-        return prefab.GetComponentInChildren<Renderer>().bounds.size.z;
-    }
-
-    void FillBetween(Transform a, Transform b)
-    {
-        Vector3 d = b.position - a.position; d.y = 0f;
-        float dist = d.magnitude;
-        if (dist < 0.0001f) return;
-
-        Vector3 dir = d / dist;
-        Quaternion rot = LookBridge(dir);
-
-        float midStep = PieceLen(Bridge_Mid_Prefab);
-        float fillStep = PieceLen(Bridge_Mid_Extensive_Prefab);
-
-        float offset = midStep;
-
-        // Place as many middle sections as possible
-        while (offset + midStep < dist)
-        {
-            Instantiate(Bridge_Mid_Prefab, a.position + dir * offset, rot);
-            offset += midStep;
-        }
-
-        // Fill remaining gap with filler/extensive sections
-        while (offset + fillStep < dist)
-        {
-            Instantiate(Bridge_Mid_Extensive_Prefab, a.position + dir * offset, rot);
-            offset += fillStep;
-        }
-    }
-
-    void VisualizeFillBetween(Transform a, Transform b)
+    private void PreviewFillBetween(Transform start, Transform end)
     {
         if (_midPreviewRoot == null)
             _midPreviewRoot = new GameObject("BridgeMidPreview").transform;
@@ -176,32 +144,90 @@ public class BridgeConstructor : MonoBehaviour
         for (int i = _midPreviewRoot.childCount - 1; i >= 0; i--)
             Destroy(_midPreviewRoot.GetChild(i).gameObject);
 
-        Vector3 d = b.position - a.position; d.y = 0f;
-        float dist = d.magnitude;
-        if (dist < 0.0001f) return;
+        FillBetweenInternal(start, end, _midPreviewRoot);
+    }
+    private void FillBetweenInternal(Transform start, Transform end, Transform parent)
+    {
+        Vector3 direction = end.position - start.position; direction.y = 0f;
+        float distance = direction.magnitude;
+        if (distance < 0.0001f) return;
 
-        Vector3 dir = d / dist;
-        Quaternion rot = LookBridge(dir);
+        Vector3 unitDir = direction / distance;
+        Quaternion rot = GetBridgeRotationFromDirection(unitDir);
 
-        float midStep = PieceLen(Bridge_Mid_Prefab);
-        float fillStep = PieceLen(Bridge_Mid_Extensive_Prefab);
+        float startLength = GetPieceLengthFromInstance(start);
+        float endLength = GetPieceLengthFromInstance(end);
 
-        float offset = midStep;
+        // Keep your existing behavior: different edge offset in preview vs final.
+        float edgeOffset = parent == null ? +-1.25f : -1.25f;
 
-        while (offset + midStep < dist)
+        Vector3 startEdge = start.position + unitDir * (startLength * 0.5f + edgeOffset);
+        Vector3 endEdge = end.position - unitDir * (endLength * 0.5f + edgeOffset);
+
+        Vector3 span = endEdge - startEdge; span.y = 0f;
+        float fillDistance = span.magnitude;
+        if (fillDistance < 0.0001f) return;
+
+        Vector3 fillDir = span / fillDistance;
+
+        float segmentLength = GetPieceLengthFromPrefab(Bridge_Mid_Extensive_Prefab);
+        float segmentSpacing = segmentLength * 0.50f;
+
+        float pos = segmentLength * 0.5f;
+        while (pos + segmentLength * 0.5f <= fillDistance)
         {
-            Instantiate(Bridge_Mid_Prefab, a.position + dir * offset, rot, _midPreviewRoot);
-            offset += midStep;
-        }
-
-        while (offset + fillStep < dist)
-        {
-            Instantiate(Bridge_Mid_Extensive_Prefab, a.position + dir * offset, rot, _midPreviewRoot);
-            offset += fillStep;
+            if (parent == null) Instantiate(Bridge_Mid_Extensive_Prefab, startEdge + fillDir * pos, rot);
+            else Instantiate(Bridge_Mid_Extensive_Prefab, startEdge + fillDir * pos, rot, parent);
+            pos += segmentSpacing;
         }
     }
+    #endregion
+    #region Helpers
+    private Quaternion GetBridgeRotationFromDirection(Vector3 direction, float extraYawDegrees = 0f)
+    {
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f) return Quaternion.identity;
+        return Quaternion.LookRotation(direction, Vector3.up) * Quaternion.Euler(0f, 90f + extraYawDegrees, 0f);
+    }
+    private void FaceEachOther(Transform a, Transform b)
+    {
+        if (a == null || b == null) return;
 
-    void ClearMidPreview()
+        Vector3 ab = b.position - a.position;
+        a.rotation = GetBridgeRotationFromDirection(ab);
+        b.rotation = GetBridgeRotationFromDirection(-ab, 180f);
+    }
+    private float GetPieceLengthFromPrefab(GameObject prefab)
+    {
+        var mf = prefab.GetComponentInChildren<MeshFilter>();
+        if (mf != null && mf.sharedMesh != null)
+        {
+            Vector3 meshSize = mf.sharedMesh.bounds.size;
+            Vector3 lossy = mf.transform.lossyScale;
+            float lengthX = Mathf.Abs(meshSize.x * lossy.x);
+            float lengthZ = Mathf.Abs(meshSize.z * lossy.z);
+            return Mathf.Max(lengthX, lengthZ);
+        }
+
+        var r = prefab.GetComponentInChildren<Renderer>();
+        return Mathf.Max(r.bounds.size.x, r.bounds.size.z);
+    }
+    private float GetPieceLengthFromInstance(Transform instance)
+    {
+        var mf = instance.GetComponentInChildren<MeshFilter>();
+        if (mf != null && mf.sharedMesh != null)
+        {
+            Vector3 meshSize = mf.sharedMesh.bounds.size;
+            Vector3 lossy = mf.transform.lossyScale;
+            float lengthX = Mathf.Abs(meshSize.x * lossy.x);
+            float lengthZ = Mathf.Abs(meshSize.z * lossy.z);
+            return Mathf.Max(lengthX, lengthZ);
+        }
+
+        var r = instance.GetComponentInChildren<Renderer>();
+        return Mathf.Max(r.bounds.size.x, r.bounds.size.z);
+    }
+    private void ClearMidPreview()
     {
         if (_midPreviewRoot) Destroy(_midPreviewRoot.gameObject);
         _midPreviewRoot = null;
