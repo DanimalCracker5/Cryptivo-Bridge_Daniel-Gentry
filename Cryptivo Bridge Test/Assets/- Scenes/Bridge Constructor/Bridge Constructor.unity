@@ -290,6 +290,7 @@ MonoBehaviour:
   Bridge_Mid_Extensive_Prefab: {fileID: 4683062245175380615, guid: 61ec51203249a3a49891331fa25b2f7b, type: 3}
   Bridge_End_Prefab: {fileID: 923143942410646467, guid: 2449b00b0b6e8b244a6b8925a37c080b, type: 3}
   MouseRotateSensitivity: 180
+  MinDragDistance: 0.15
 --- !u!1 &112315340
 GameObject:
   m_ObjectHideFlags: 0
@@ -708,8 +709,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "WASD to Move   \u2022   Mouse to Look   \u2022   Right Click to Place  
-    \u2022   Mouse Wheel to Rotate   \u2022   Esc to Cancel\r\n"
+  m_text: "WASD to Move   \u2022   Mouse to Look   \u2022   Right Click + Drag to
+    Place   \u2022   Mouse Wheel to Rotate   \u2022   Esc to Cancel\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
