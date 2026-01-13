@@ -5,18 +5,10 @@ public class BridgeConstructor : MonoBehaviour
     #region Variables
     [Header("State")]
     public PlacementStage CurrentPlacementStage = PlacementStage.StartPiece;
-
     private PlacementStage _cachedStage = PlacementStage.Null;
 
-    private Vector3 _lastHitPoint;
-    private Vector3 _mouseDownStartPoint;
-
-    private Transform _cursor;
-    private Transform _startPiece;
-    private Transform _endPiece;
-    private Transform _midPreviewRoot;
-
-    private bool _dragActive;
+    [Header("Rotation")]
+    public float MouseRotateSensitivity = 180f;
 
     [Header("Prefabs")]
     public GameObject Bridge_Start_Prefab;
@@ -24,26 +16,14 @@ public class BridgeConstructor : MonoBehaviour
     public GameObject Bridge_Mid_Extensive_Prefab;
     public GameObject Bridge_End_Prefab;
 
-    [Header("Length Axis (true=X false=Z)")]
-    [SerializeField] private bool StartUseX = false;
-    [SerializeField] private bool MidUseX = false;
-    [SerializeField] private bool ExtUseX = false;
-    [SerializeField] private bool EndUseX = false;
+    private Transform _cursor, _startPiece, _endPiece, _midPreviewRoot;
+    private Vector3 _lastHitPoint, _mouseDownStartPoint;
+    private bool _dragActive;
+    private float MinDragDistance = 0.6f;
+    private float MinBridgeLength = 1.5f;
 
-    [Header("Rotation")]
-    public float MouseRotateSensitivity = 180f;
-
-    [Header("Input")]
-    [SerializeField] private float MinDragDistance = 0.6f;
-    [SerializeField] private float MinBridgeLength = 1.5f;
-
-    private const float START_YAW_OFFSET = 90f;
-    private const float END_YAW_OFFSET = 270f;
-
-    private Vector3 _lastSpawnEdge;
-    private Vector3 _lastSpawnFwd;
-    private float _lastSpawnY;
-    private Vector3 _lastSpawnEndPos;
+    private Vector3 _lastSpawnFwd, _lastSpawnEndPos, _lastSpawnEdge;
+    private float _lastSpawnY;     
     #endregion
     void Update()
     {
@@ -62,16 +42,6 @@ public class BridgeConstructor : MonoBehaviour
         HandleDragRelease();
     }
     #region Placement Visual
-    static void Spawn(Transform parent, GameObject prefab, Vector3 edge, Vector3 fwd, Quaternion rot, float len, float yLock)
-    {
-        if (!prefab) return;
-
-        Vector3 c = edge + fwd * (len * 0.5f);
-        c.y = yLock;
-
-        if (parent) Object.Instantiate(prefab, c, rot, parent);
-        else Object.Instantiate(prefab, c, rot);
-    }
     private void UpdatePlacementVisual()
     {
         var prefab = GetCursorPrefabForStage(CurrentPlacementStage);
@@ -144,10 +114,10 @@ public class BridgeConstructor : MonoBehaviour
         if (total < MinBridgeLength) return;
 
         Vector3 fwd = dir / Mathf.Max(total, 0.0001f);
-        Quaternion rot = Quaternion.LookRotation(fwd, Vector3.up) * Quaternion.Euler(0f, START_YAW_OFFSET, 0f);
+        Quaternion rot = Quaternion.LookRotation(fwd, Vector3.up) * Quaternion.Euler(0f, 90f, 0f);
 
-        float startLen = GetPrefabLengthAlongAxis(Bridge_Start_Prefab, StartUseX);
-        float endLen = GetPrefabLengthAlongAxis(Bridge_End_Prefab, EndUseX);
+        float startLen = GetPrefabLengthAlongXAxis(Bridge_Start_Prefab);
+        float endLen = GetPrefabLengthAlongXAxis(Bridge_End_Prefab);
 
         Vector3 startInner = startPos + fwd * (startLen * 0.5f);
         Vector3 endInner = endPos - fwd * (endLen * 0.5f);
@@ -159,8 +129,8 @@ public class BridgeConstructor : MonoBehaviour
 
         float remaining = span.magnitude;
 
-        float extLen = GetPrefabLengthAlongAxis(Bridge_Mid_Extensive_Prefab, ExtUseX);
-        float midLen = GetPrefabLengthAlongAxis(Bridge_Mid_Prefab, MidUseX);
+        float extLen = GetPrefabLengthAlongXAxis(Bridge_Mid_Extensive_Prefab);
+        float midLen = GetPrefabLengthAlongXAxis(Bridge_Mid_Prefab);
 
         if (remaining < MinBridgeLength) return;
         if (extLen <= 0.0001f || midLen <= 0.0001f) return;
@@ -202,7 +172,7 @@ public class BridgeConstructor : MonoBehaviour
     {
         if (!_endPiece) return;
 
-        float endPieceLen = GetPrefabLengthAlongAxis(Bridge_End_Prefab, EndUseX);
+        float endPieceLen = GetPrefabLengthAlongXAxis(Bridge_End_Prefab);
         Vector3 snapped = _lastSpawnEdge + _lastSpawnFwd * (endPieceLen * 0.5f);
         snapped.y = yLock;
 
@@ -212,8 +182,8 @@ public class BridgeConstructor : MonoBehaviour
     {
         ClearMidPreview();
 
-        DestroyIfExists(_startPiece);
-        DestroyIfExists(_endPiece);
+        DestroyGameObjectFor(_startPiece);
+        DestroyGameObjectFor(_endPiece);
 
         _startPiece = null;
         _endPiece = null;
@@ -247,8 +217,8 @@ public class BridgeConstructor : MonoBehaviour
 
         _dragActive = true;
 
-        DestroyIfExists(_startPiece);
-        DestroyIfExists(_endPiece);
+        DestroyGameObjectFor(_startPiece);
+        DestroyGameObjectFor(_endPiece);
         ClearMidPreview();
 
         if (!_cursor || !Bridge_Start_Prefab) return;
@@ -315,8 +285,8 @@ public class BridgeConstructor : MonoBehaviour
         direction.y = 0f;
         if (direction.sqrMagnitude < 0.000001f) return;
 
-        start.rotation = Quaternion.LookRotation(direction, Vector3.up) * Quaternion.Euler(0f, START_YAW_OFFSET, 0f);
-        end.rotation = Quaternion.LookRotation(-direction, Vector3.up) * Quaternion.Euler(0f, END_YAW_OFFSET, 0f);
+        start.rotation = Quaternion.LookRotation(direction, Vector3.up) * Quaternion.Euler(0f, 90f, 0f);
+        end.rotation = Quaternion.LookRotation(-direction, Vector3.up) * Quaternion.Euler(0f, 270f, 0f);
     }
     private void EnsureMidPreviewRoot()
     {
@@ -335,29 +305,26 @@ public class BridgeConstructor : MonoBehaviour
             Destroy(_midPreviewRoot.gameObject);
         _midPreviewRoot = null;
     }
-    private static void DestroyIfExists(Transform t)
+    private static void DestroyGameObjectFor(Transform _transform)
     {
-        if (t) Object.Destroy(t.gameObject);
+        if (_transform) 
+            Object.Destroy(_transform.gameObject);
     }
-    static float GetPrefabLengthAlongAxis(GameObject prefab, bool useX)
+    static void Spawn(Transform parent, GameObject prefab, Vector3 edge, Vector3 fwd, Quaternion rot, float len, float yLock)
     {
-        if (!prefab) return 0f;
+        if (!prefab) return;
 
-        var mf = prefab.GetComponentInChildren<MeshFilter>();
-        if (mf && mf.sharedMesh)
-        {
-            var sz = mf.sharedMesh.bounds.size;
-            var sc = mf.transform.lossyScale;
-            float lx = Mathf.Abs(sz.x * sc.x);
-            float lz = Mathf.Abs(sz.z * sc.z);
-            return useX ? lx : lz;
-        }
+        Vector3 c = edge + fwd * (len * 0.5f);
+        c.y = yLock;
 
+        if (parent) Object.Instantiate(prefab, c, rot, parent);
+        else Object.Instantiate(prefab, c, rot);
+    }
+
+    float GetPrefabLengthAlongXAxis(GameObject prefab)
+    {
         var r = prefab.GetComponentInChildren<Renderer>();
-        if (!r) return 0f;
-
-        return useX ? r.bounds.size.x : r.bounds.size.z;
+        return r.bounds.size.x;
     }
     #endregion
-
 }
